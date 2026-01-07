@@ -8,19 +8,19 @@ export class PoliciesController {
 
     @Get()
     async getPolicies(
-      @Query('page') page?: string,
-      @Query('limit') limit?: string,
+      @Query('page') page?: number,
+      @Query('limit') limit?: number,
       @Query('status') status?: string,
       @Query('type') type?: string,
       @Query('holderName') holderName?: string,
     ) {
       return this.policiesService.findAll({
-        page: page ? parseInt(page, 10) : undefined,
-        limit: limit ? parseInt(limit, 10) : undefined,
+        page: Number(page) || 1,
+        limit: Number(limit) || 10,
         status,
         type,
         holderName,
-      });
+      })
     }
 
     @Get(':id')

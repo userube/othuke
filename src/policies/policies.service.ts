@@ -35,6 +35,35 @@ export class PoliciesService {
       return { policies, total, page, limit };
   }
 
+  // policies.service.ts
+  async findAllNew(params: {
+    page?: number
+    limit?: number
+    status?: string
+    type?: string
+    holderName?: string
+  }) {
+    const { page = 1, limit = 10, status, type, holderName } = params
+
+    const where: any = {}
+    if (status) where.status = status
+    if (type) where.type = type
+    if (holderName) where.holderName = { contains: holderName, mode: 'insensitive' }
+
+    const [policies, total] = await Promise.all([
+      this.prisma.client.policy.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.client.policy.count({ where }),
+    ])
+
+    return { policies, total, page, limit }
+  }
+
+
   async findOne(id: string) {
     return this.prisma.client.policy.findUnique({
       where: { id },
