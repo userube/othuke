@@ -62,4 +62,64 @@ export class ClaimsService {
       skipDuplicates: true,
     })
   }
+
+  async submitClaim(
+    providerId: string,
+    userId: string,
+    dto: CreateClaimDto,
+  ) {
+    return this.prisma.claim.create({
+      data: {
+        providerId,
+        policyId: dto.policyId,
+        amount: dto.amount,
+        description: dto.description,
+        submittedById: userId,
+      },
+    })
+  }
+
+  async findAll(providerId: string, status?: ClaimStatus) {
+    return this.prisma.claim.findMany({
+      where: {
+        providerId,
+        ...(status && { status }),
+      },
+      include: {
+        policy: true,
+        submittedBy: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+  }
+
+  async markUnderReview(providerId: string, userId: string, claimId: string) {
+    return this.prisma.claim.update({
+      where: { id: claimId, providerId },
+      data: {
+        status: ClaimStatus.UNDER_REVIEW,
+        reviewedById: userId,
+      },
+    })
+  }
+
+  async approve(providerId: string, claimId: string) {
+    return this.prisma.claim.update({
+      where: { id: claimId, providerId },
+      data: { status: ClaimStatus.APPROVED },
+    })
+  }
+
+  async reject(providerId: string, claimId: string, reason?: string) {
+    return this.prisma.claim.update({
+      where: { id: claimId, providerId },
+      data: {
+        status: ClaimStatus.REJECTED,
+        description: reason,
+      },
+    })
+  }
+
+
+
 }

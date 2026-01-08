@@ -29,4 +29,56 @@ export class ClaimsController {
     const result = await this.claimsService.createBulkFromCSV(file.buffer)
     return { message: 'Claims uploaded successfully', result }
   }
+
+  @Post()
+  @Roles(Role.OPERATIONS)
+  submit(
+    @Req() req,
+    @Body() dto: CreateClaimDto,
+  ) {
+    return this.claimsService.submitClaim(
+      req.user.providerId,
+      req.user.id,
+      dto,
+    )
+  }
+
+  @Get()
+  @Roles(Role.ADMIN, Role.OPERATIONS, Role.FINANCE)
+  findAll(
+    @Req() req,
+    @Query('status') status?: ClaimStatus,
+  ) {
+    return this.claimsService.findAll(
+      req.user.providerId,
+      status,
+    )
+  }
+
+  @Post(':id/review')
+  @Roles(Role.OPERATIONS)
+  review(@Req() req, @Param('id') id: string) {
+    return this.claimsService.markUnderReview(
+      req.user.providerId,
+      req.user.id,
+      id,
+    )
+  }
+
+  @Post(':id/approve')
+  @Roles(Role.ADMIN)
+  approve(@Req() req, @Param('id') id: string) {
+    return this.claimsService.approve(req.user.providerId, id)
+  }
+
+  @Post(':id/reject')
+  @Roles(Role.ADMIN)
+  reject(
+    @Req() req,
+    @Param('id') id: string,
+    @Body() dto: DecideClaimDto,
+  ) {
+    return this.claimsService.reject(req.user.providerId, id, dto.reason)
+  }
+
 }
