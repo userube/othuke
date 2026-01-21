@@ -73,4 +73,12 @@ export class BidsController {
             req.user.userId,
         );
     }
+
+    /*
+    score =
+  (priceWeight * priceScore) +
+  (deliveryWeight * deliveryScore) +
+  (ratingWeight * vendorRating)
+    *
+    * */
 }
