@@ -1,129 +1,69 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common'
-import { JwtService } from '@nestjs/jwt'
-import * as bcrypt from 'bcrypt'
-import { PrismaService } from '../prisma/prisma.service'
+// src/auth/auth.service.ts
+import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { JwtService } from '@nestjs/jwt';
+import * as bcrypt from 'bcrypt';
+import { PrismaService } from '../prisma/prisma.service';
+import { Role } from '../common/enums/role.enum';
 
 @Injectable()
 export class AuthService {
   constructor(
-    private prisma: PrismaService,
-    private jwt: JwtService,
+      private prisma: PrismaService,
+      private jwtService: JwtService,
   ) {}
 
-  async login(email: string, password: string) {
-    const user = await this.prisma.providerUser.findUnique({
-      where: { email },
-    })
+  async registerCustomer(email: string, password: string) {
+    const hashed = await bcrypt.hash(password, 10);
 
-    if (!user || !user.password) {
-      throw new UnauthorizedException()
-    }
-
-    const isValid = await bcrypt.compare(password, user.password)
-    if (!isValid) {
-      throw new UnauthorizedException()
-    }
-
-    const payload = {
-      sub: user.id,
-      providerId: user.providerId,
-      role: user.role,
-    }
-
-    return {
-      accessToken: this.jwt.sign(payload),
-      user: {
-        id: user.id,
-        providerId: user.providerId,
-        role: user.role,
+    return this.prisma.user.create({
+      data: {
+        email,
+        password: hashed,
+        role: Role.CUSTOMER,
+        customerProfile: {
+          create: {},
+        },
       },
-    }
+    });
   }
 
-    async signup(dto: SignupDto) {
-      const exists = await this.prisma.user.findUnique({
-        where: { email: dto.email },
-      })
+  async registerVendor(
+      email: string,
+      password: string,
+      businessName: string,
+  ) {
+    const hashed = await bcrypt.hash(password, 10);
 
-      if (exists) {
-        throw new ConflictException('Email already in use')
-      }
-
-      const passwordHash = await bcrypt.hash(dto.password, 10)
-
-      const provider = await this.prisma.provider.create({
-        data: {
-          name: dto.companyName,
-          email: dto.email,
-          users: {
-            create: {
-              email: dto.email,
-              password: passwordHash,
-              role: Role.ADMIN,
-            },
-          },
+    return this.prisma.user.create({
+      data: {
+        email,
+        password: hashed,
+        role: Role.VENDOR,
+        vendorProfile: {
+          create: { businessName },
         },
-        include: { users: true },
-      })
+      },
+    });
+  }
 
-      const admin = provider.users[0]
+  async login(email: string, password: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { email },
+    });
 
-      return {
-        user: this.sanitizeUser(admin),
-        token: this.signToken(admin),
-      }
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      throw new UnauthorizedException('Invalid credentials');
     }
 
-    private signToken(user: any) {
-      return this.jwt.sign({
-        sub: user.id,
-        role: user.role,
-        providerId: user.providerId,
-      })
-    }
+    const payload = { sub: user.id, role: user.role };
 
-    private sanitizeUser(user: any) {
-      const { password, ...rest } = user
-      return rest
-    }
-
-    async acceptInvite(token: string, dto: AcceptInviteDto) {
-      const invite = await this.prisma.invite.findUnique({
-        where: { token },
-      })
-
-      if (!invite || invite.accepted) {
-        throw new Error('Invalid or already used invite')
-      }
-
-      if (invite.expiresAt < new Date()) {
-        throw new Error('Invite expired')
-      }
-
-      const passwordHash = await bcrypt.hash(dto.password, 10)
-
-      const user = await this.prisma.$transaction(async tx => {
-        const newUser = await tx.user.create({
-          data: {
-            email: invite.email,
-            password: passwordHash,
-            role: invite.role,
-            providerId: invite.providerId,
-          },
-        })
-
-        await tx.invite.update({
-          where: { id: invite.id },
-          data: { accepted: true },
-        })
-
-        return newUser
-      })
-
-      return {
-        user: this.sanitizeUser(user),
-        token: this.signToken(user),
-      }
-    }
-
+    return {
+      accessToken: this.jwtService.sign(payload, {
+        expiresIn: '15m',
+      }),
+      refreshToken: this.jwtService.sign(payload, {
+        expiresIn: '7d',
+      }),
+    };
+  }
 }

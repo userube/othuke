@@ -1,23 +1,30 @@
-import { Body, Controller, Post } from '@nestjs/common'
-import { AuthService } from './auth.service'
+// src/auth/auth.controller.ts
+import { Body, Controller, Post } from '@nestjs/common';
+import { AuthService } from './auth.service';
+import { RegisterCustomerDto } from './dto/register-customer.dto';
+import { RegisterVendorDto } from './dto/register-vendor.dto';
+import { LoginDto } from './dto/login.dto';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private auth: AuthService) {}
+  constructor(private authService: AuthService) {}
 
-    @Post('login')
-    login(@Body('email') email: string, @Body('password') password: string ) {
-        return this.auth.login(email, password)
-    }
+  @Post('register/customer')
+  registerCustomer(@Body() dto: RegisterCustomerDto) {
+    return this.authService.registerCustomer(dto.email, dto.password);
+  }
 
-    @Post('signup')
-    signup(@Body() dto: SignupDto) {
-      return this.auth.signup(dto)
-    }
+  @Post('register/vendor')
+  registerVendor(@Body() dto: RegisterVendorDto) {
+    return this.authService.registerVendor(
+        dto.email,
+        dto.password,
+        dto.businessName,
+    );
+  }
 
-    @Post('invites/:token/accept')
-    acceptInvite(@Param('token') token: string,@Body() dto: AcceptInviteDto) {
-      return this.auth.acceptInvite(token, dto)
-    }
-
+  @Post('login')
+  login(@Body() dto: LoginDto) {
+    return this.authService.login(dto.email, dto.password);
+  }
 }
