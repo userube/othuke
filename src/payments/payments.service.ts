@@ -6,7 +6,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { PaymentStatus, OrderStatus, EscrowStatus } from '@prisma/client';
 import { v4 as uuid } from 'uuid';
-import { MockPaymentProvider } from './providers/mock.provider';
+import {MockPaymentProvider} from "./provider/mock-provider";
 
 @Injectable()
 export class PaymentsService {
@@ -39,12 +39,13 @@ export class PaymentsService {
             },
         });
 
-        const response =
-            await this.provider.initializePayment(
-                order.amount,
-                'customer@email.com',
-                reference,
-            );
+        const response = await this.provider.initializePayment();
+
+            // await this.provider.initializePayment(
+            //     order.amount,
+            //     'customer@email.com',
+            //     reference,
+            // );
 
         return {
             paymentUrl: response.paymentUrl,
@@ -62,8 +63,8 @@ export class PaymentsService {
                 'Payment not found',
             );
 
-        const result =
-            await this.provider.verifyPayment(reference);
+        const result = await this.provider.verifyPayment();
+            // await this.provider.verifyPayment(reference);
 
         if (!result.success) {
             await this.prisma.payment.update({
