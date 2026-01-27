@@ -1,0 +1,372 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["core"]
+}
+
+enum Role {
+  ADMIN
+  CUSTOMER
+  VENDOR
+
+  @@schema("core")
+}
+
+enum RequestStatus {
+  OPEN
+  CLOSED
+  ORDERED
+
+  @@schema("core")
+}
+
+enum BidStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+
+  @@schema("core")
+}
+
+enum OrderStatus {
+  REQUESTED
+  PAID
+  ACCEPTED
+  SHIPPED
+  COMPLETED
+  CANCELLED
+
+  @@schema("core")
+}
+
+enum VendorVerificationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+
+  @@schema("core")
+}
+
+enum FieldType {
+  TEXT
+  NUMBER
+  BOOLEAN
+  SELECT
+
+  @@schema("core")
+}
+
+model User {
+  id       String  @id @default(uuid())
+  email    String  @unique
+  password String
+  role     Role
+  isActive Boolean @default(true)
+
+  customerProfile CustomerProfile?
+  vendorProfile   VendorProfile?
+
+  messages       Message[]
+  auditLogs      AuditLog[]
+  notifications  Notification[]
+  disputesOpened Dispute[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@schema("core")
+}
+
+model CustomerProfile {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  requests ItemRequest[]
+  orders   Order[]
+
+  @@schema("core")
+}
+
+model VendorProfile {
+  id     String @id @default(uuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id])
+
+  businessName       String
+  rating             Float                    @default(0)
+  verificationStatus VendorVerificationStatus @default(PENDING)
+
+  bids      Bid[]
+  orders    Order[]
+  shipments Shipment[]
+
+  @@schema("core")
+}
+
+model Category {
+  id       String  @id @default(uuid())
+  name     String
+  isActive Boolean @default(true)
+
+  fields   CategoryField[]
+  requests ItemRequest[]
+
+  @@schema("core")
+}
+
+model CategoryField {
+  id         String   @id @default(uuid())
+  categoryId String
+  category   Category @relation(fields: [categoryId], references: [id])
+
+  name     String
+  type     FieldType
+  required Boolean   @default(false)
+  options  Json?
+
+  @@schema("core")
+}
+
+model ItemRequest {
+  id         String @id @default(uuid())
+  customerId String
+  categoryId String
+
+  title       String
+  description String
+  images      Json
+  status      RequestStatus @default(OPEN)
+
+  customFieldValues Json
+
+  customer CustomerProfile @relation(fields: [customerId], references: [id])
+  category Category        @relation(fields: [categoryId], references: [id])
+  bids     Bid[]
+  order    Order?
+
+  createdAt DateTime @default(now())
+
+  @@schema("core")
+}
+
+model Bid {
+  id        String @id @default(uuid())
+  requestId String
+  vendorId  String
+
+  price               Float
+  availabilityDate    DateTime
+  deliveryTimeline    String
+  specificationsMatch Json
+  message             String?
+
+  status BidStatus @default(PENDING)
+
+  request ItemRequest   @relation(fields: [requestId], references: [id])
+  vendor  VendorProfile @relation(fields: [vendorId], references: [id])
+
+  order Order? // ✅ ADD THIS
+
+  createdAt DateTime @default(now())
+
+  @@schema("core")
+}
+
+model Order {
+  id        String @id @default(uuid())
+  requestId String @unique
+  bidId     String @unique
+
+  customerId String
+  vendorId   String
+
+  amount Float
+  status OrderStatus @default(REQUESTED)
+
+  request  ItemRequest     @relation(fields: [requestId], references: [id])
+  bid      Bid             @relation(fields: [bidId], references: [id])
+  customer CustomerProfile @relation(fields: [customerId], references: [id])
+  vendor   VendorProfile   @relation(fields: [vendorId], references: [id])
+
+  payment      Payment?
+  shipment     Shipment?
+  conversation Conversation?
+  dispute      Dispute[]
+
+  createdAt DateTime @default(now())
+
+  @@schema("core")
+}
+
+model Shipment {
+  id       String @id @default(uuid())
+  orderId  String @unique
+  vendorId String
+
+  trackingCode String?
+  courier      String?
+  status       ShipmentStatus @default(PENDING)
+  shippedAt    DateTime?
+  deliveredAt  DateTime?
+  createdAt    DateTime       @default(now())
+
+  order  Order         @relation(fields: [orderId], references: [id])
+  vendor VendorProfile @relation(fields: [vendorId], references: [id])
+
+  @@schema("core")
+}
+
+model AuditLog {
+  id       String @id @default(uuid())
+  actorId  String
+  action   String
+  entity   String
+  entityId String
+  metadata Json?
+
+  actor User @relation(fields: [actorId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@schema("core")
+}
+
+enum PaymentStatus {
+  INITIATED
+  SUCCESS
+  FAILED
+  REFUNDED
+  HELD
+  RELEASED
+
+  @@schema("core")
+}
+
+enum EscrowStatus {
+  HOLDING
+  RELEASED
+  REFUNDED
+
+  @@schema("core")
+}
+
+model Payment {
+  id        String        @id @default(uuid())
+  orderId   String        @unique
+  amount    Float
+  provider  String
+  reference String        @unique
+  status    PaymentStatus
+  createdAt DateTime      @default(now())
+
+  order  Order   @relation(fields: [orderId], references: [id])
+  escrow Escrow?
+
+  @@schema("core")
+}
+
+model Escrow {
+  id         String       @id @default(uuid())
+  paymentId  String       @unique
+  amount     Float
+  status     EscrowStatus
+  releasedAt DateTime?
+
+  payment Payment @relation(fields: [paymentId], references: [id])
+
+  @@schema("core")
+}
+
+enum ShipmentStatus {
+  PENDING
+  PACKED
+  SHIPPED
+  IN_TRANSIT
+  DELIVERED
+  CONFIRMED
+
+  @@schema("core")
+}
+
+enum NotificationType {
+  BID_RECEIVED
+  BID_ACCEPTED
+  ORDER_PAID
+  SHIPPED
+  DELIVERED
+  MESSAGE
+  SYSTEM
+
+  @@schema("core")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@schema("core")
+}
+
+model Conversation {
+  id        String   @id @default(uuid())
+  orderId   String   @unique // ✅ REQUIRED
+  createdAt DateTime @default(now())
+
+  order    Order     @relation(fields: [orderId], references: [id])
+  messages Message[]
+
+  @@schema("core")
+}
+
+model Message {
+  id             String   @id @default(uuid())
+  conversationId String
+  senderId       String
+  content        String
+  createdAt      DateTime @default(now())
+
+  conversation Conversation @relation(fields: [conversationId], references: [id])
+  sender       User         @relation(fields: [senderId], references: [id])
+
+  @@schema("core")
+}
+
+enum DisputeStatus {
+  OPEN
+  RESOLVED
+  REJECTED
+
+  @@schema("core")
+}
+
+model Dispute {
+  id         String        @id @default(uuid())
+  orderId    String
+  openedById String
+  reason     String
+  status     DisputeStatus @default(OPEN)
+  resolution String?
+  createdAt  DateTime      @default(now())
+
+  order    Order @relation(fields: [orderId], references: [id])
+  openedBy User  @relation(fields: [openedById], references: [id])
+
+  @@schema("core")
+}
