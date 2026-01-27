@@ -8,22 +8,23 @@ const pool = new Pool({
 });
 
 @Injectable()
-export class PrismaService implements OnModuleInit, OnModuleDestroy {
-  client: PrismaClient;
-
+export class PrismaService
+    extends PrismaClient
+    implements OnModuleInit, OnModuleDestroy
+{
   constructor() {
-    this.client = new PrismaClient({
+    super({
       adapter: new PrismaPg(pool),
       log: ['query', 'info', 'warn', 'error'],
     });
   }
 
   async onModuleInit() {
-    await this.client.$connect();
+    await this.$connect();
   }
 
   async onModuleDestroy() {
-    await this.client.$disconnect();
+    await this.$disconnect();
     await pool.end();
   }
 }

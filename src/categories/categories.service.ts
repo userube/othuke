@@ -72,15 +72,22 @@ export class CategoriesService {
                                 `${field.name} must be boolean`,
                             );
                         break;
-                    case 'SELECT':
-                        if (
-                            !field.options?.includes(value)
-                        ) {
+                    case 'SELECT': {
+                        const options = field.options as string[];
+
+                        if (!Array.isArray(options)) {
+                            throw new BadRequestException(
+                                `${field.name} options are misconfigured`,
+                            );
+                        }
+
+                        if (!options.includes(value)) {
                             throw new BadRequestException(
                                 `${field.name} has invalid option`,
                             );
                         }
                         break;
+                    }
                 }
             }
         }

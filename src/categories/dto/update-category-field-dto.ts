@@ -5,7 +5,7 @@ import {
     IsOptional,
     IsString,
 } from 'class-validator';
-import { FieldType } from '@prisma/client';
+import {FieldType} from "@prisma/client";
 
 export class UpdateCategoryFieldDto {
     @IsOptional()
