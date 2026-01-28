@@ -2,16 +2,14 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Copy package.json and package-lock.json
+# Copy package.json and install dependencies
 COPY package*.json ./
-
-# Install all dependencies
 RUN npm install
 
-# Copy the app source
+# Copy source code
 COPY . .
 
-# Generate Prisma client (no real DB needed)
+# Generate Prisma client (dummy DB at build time)
 RUN npx prisma generate
 
 # Build NestJS
@@ -21,13 +19,13 @@ RUN npm run build
 FROM node:20-alpine
 WORKDIR /app
 
-# Copy built files and dependencies
+# Copy built files and production node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 COPY package*.json ./
 
-# Expose NestJS default port
+# Expose port
 EXPOSE 3000
 
 # Start app
