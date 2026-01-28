@@ -16,6 +16,7 @@ export class PrismaService
     super({
       adapter: new PrismaPg(pool),
       log: ['query', 'info', 'warn', 'error'],
+      skipDbCheck: true,
     });
   }
 
