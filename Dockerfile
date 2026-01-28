@@ -1,26 +1,30 @@
-# ---- STAGE 1: Build ----
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Copy package files and install dependencies
+# Install build dependencies
+RUN apk add --no-cache openssl1.1 libc6-compat curl bash
+
 COPY package*.json ./
 RUN npm install
 
-# Copy the rest of the code
 COPY . .
 
-# Generate Prisma client and build NestJS
+# Prisma generate (no DB connection required at build)
 RUN npx prisma generate
+
+# Build NestJS
 RUN npm run build
 
 # ---- STAGE 2: Production ----
 FROM node:20-alpine
 WORKDIR /app
 
-# Copy built files and node_modules
+RUN apk add --no-cache openssl1.1 libc6-compat curl bash
+
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
+COPY package*.json ./
 
 EXPOSE 3000
 
