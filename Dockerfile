@@ -9,7 +9,7 @@ RUN npm install
 # Copy source code
 COPY . .
 
-# Generate Prisma client (dummy DB at build time)
+# Generate Prisma client (database not required at build)
 RUN npx prisma generate
 
 # Build NestJS
@@ -19,14 +19,14 @@ RUN npm run build
 FROM node:20-alpine
 WORKDIR /app
 
-# Copy built files and production node_modules
+# Copy build artifacts and node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 COPY package*.json ./
 
-# Expose port
+# Expose NestJS port
 EXPOSE 3000
 
-# Start app
+# Start app (Prisma uses DATABASE_URL from Render env)
 CMD ["node", "dist/main.js"]
