@@ -4,6 +4,10 @@ FROM node:20-alpine AS builder
 # Set working directory inside container
 WORKDIR /app
 
+# Accept DATABASE_URL at build time
+ARG DATABASE_URL
+ENV DATABASE_URL=${DATABASE_URL}
+
 # Copy package.json and package-lock.json
 COPY package*.json ./
 
