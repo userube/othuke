@@ -8,6 +8,6 @@ export default defineConfig({
     },
     datasource: {
         // Use a dummy URL at build time to allow prisma generate to succeed
-        url: env('DATABASE_URL', "postgresql://dummy:dummy@localhost:5432/dummy"),
+        url: "postgresql://dummy:dummy@localhost:5432/dummy",
     },
 })
