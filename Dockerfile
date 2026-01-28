@@ -1,42 +1,30 @@
 # ---- STAGE 1: Build ----
 FROM node:20-alpine AS builder
 
-# Set working directory inside container
 WORKDIR /app
 
-# Accept DATABASE_URL at build time
-ARG DATABASE_URL
-ENV DATABASE_URL=${DATABASE_URL}
-
-# Copy package.json and package-lock.json
 COPY package*.json ./
-
-# Install dependencies
 RUN npm install
 
-# Copy all source code
 COPY . .
 
-# Generate Prisma client and build NestJS
+# Prisma client generation does NOT touch DB
 RUN npx prisma generate
+
+# Build NestJS
 RUN npm run build
-RUN npx prisma migrate deploy
 
 # ---- STAGE 2: Production ----
 FROM node:20-alpine
 
-# Set working directory
 WORKDIR /app
 
-# Copy built files and package.json from builder stage
 COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/prisma ./prisma
 COPY package*.json ./
 
-# Install only production dependencies
-RUN npm install --omit=dev
-
-# Expose default NestJS port
 EXPOSE 3000
 
-# Start the app
-CMD ["node", "dist/main.js"]
+# Run migrations at container startup (DATABASE_URL is available here)
+CMD npx prisma migrate deploy && node dist/main.js
