@@ -3,16 +3,15 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# Accept DATABASE_URL at build time
-ARG DATABASE_URL
-ENV DATABASE_URL=${DATABASE_URL}
+# 👇 Provide a dummy DATABASE_URL for Prisma generate
+ENV DATABASE_URL="postgresql://user:pass@localhost:5432/dummy"
 
 COPY package*.json ./
 RUN npm install
 
 COPY . .
 
-# Prisma client generation does NOT touch DB
+# Prisma client generation (needs DATABASE_URL in Prisma v5)
 RUN npx prisma generate
 
 # Build NestJS
@@ -26,9 +25,8 @@ WORKDIR /app
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
-COPY package*.json ./
 
 EXPOSE 3000
 
-# Run migrations at container startup (DATABASE_URL is available here)
+# Real DATABASE_URL comes from Render at runtime
 CMD npx prisma migrate deploy && node dist/main.js
