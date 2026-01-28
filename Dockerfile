@@ -13,18 +13,20 @@ COPY . .
 RUN npx prisma generate
 RUN npm run build
 
+COPY . .
+RUN DATABASE_URL="postgresql://user:pass@localhost:5432/db" npx prisma generate
+RUN npm run build
+
 # ---- STAGE 2: Production ----
 FROM node:20-alpine
 WORKDIR /app
 
-# Copy built code and node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/prisma ./prisma
 COPY package*.json ./
 
-# Expose NestJS port
 EXPOSE 3000
 
-# Start app
 CMD ["node", "dist/main.js"]
+#CMD sh -c "npx prisma migrate deploy && node dist/main.js"
