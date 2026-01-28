@@ -7,6 +7,7 @@ export default defineConfig({
         path: 'prisma/migrations',
     },
     datasource: {
-        url: env('DATABASE_URL'), // Must exist at runtime
+        // Use a dummy URL at build time to allow prisma generate to succeed
+        url: env('DATABASE_URL', "postgresql://dummy:dummy@localhost:5432/dummy"),
     },
 })
